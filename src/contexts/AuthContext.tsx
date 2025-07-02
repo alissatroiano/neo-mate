@@ -162,24 +162,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
       console.log('Attempting to sign up user:', email)
-      const { error } = await supabase.auth.signUp({
+      
+      // Sign up with email confirmation disabled for now
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
           },
-          emailRedirectTo: getRedirectUrl(),
+          // Remove email redirect for now to test without email confirmation
         },
       })
       
       if (error) {
         console.error('Sign up error:', error)
-      } else {
-        console.log('Sign up successful, check email for confirmation')
+        return { error }
+      }
+
+      console.log('Sign up response:', data)
+      
+      // Check if user needs email confirmation
+      if (data.user && !data.session) {
+        console.log('User created but needs email confirmation')
+        return { error: null }
       }
       
-      return { error }
+      // If we get a session immediately, the user is confirmed
+      if (data.session) {
+        console.log('User signed up and confirmed immediately')
+        return { error: null }
+      }
+      
+      return { error: null }
     } catch (error) {
       console.error('Sign up exception:', error)
       return { error }
@@ -189,18 +204,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       console.log('Attempting to sign in user:', email)
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
       
       if (error) {
         console.error('Sign in error:', error)
-      } else {
-        console.log('Sign in successful')
+        return { error }
       }
-      
-      return { error }
+
+      console.log('Sign in successful')
+      return { error: null }
     } catch (error) {
       console.error('Sign in exception:', error)
       return { error }
