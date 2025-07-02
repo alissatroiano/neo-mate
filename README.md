@@ -157,13 +157,6 @@ The initial build can use ChatGPT output, but will be specially trained on data 
 
 Neomate provides general information and emotional support but is not a substitute for professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare providers for medical decisions.
 
-## Support
-
-For technical support or questions:
-- Email: support@neomate.ai
-- Phone: 1-800-NEOMATE
-- Available: 24/7 nationwide
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
