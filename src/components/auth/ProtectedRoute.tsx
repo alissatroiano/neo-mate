@@ -28,7 +28,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
                 className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
               >
                 <img 
-                  src="/neomate_logo.png" 
+                  src="/favicon.png" 
                   alt="Neomate" 
                   className="h-10 w-10"
                 />
