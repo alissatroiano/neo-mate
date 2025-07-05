@@ -19,8 +19,10 @@ import {
   Check,
   XIcon,
   RefreshCw,
-  Home
+  Home,
+  Mic
 } from 'lucide-react'
+import VoiceChat from '../VoiceChat'
 
 export default function Dashboard() {
   const { user, profile, signOut } = useAuth()
@@ -36,6 +38,7 @@ export default function Dashboard() {
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [conversationLoading, setConversationLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [isVoiceChatOpen, setIsVoiceChatOpen] = useState(false)
 
   // Check if Supabase is properly configured
   const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && 
@@ -762,6 +765,15 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
+                
+                {/* Voice Chat Button */}
+                <button
+                  onClick={() => setIsVoiceChatOpen(true)}
+                  className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white p-3 rounded-full hover:from-teal-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl group"
+                  title="Start voice chat"
+                >
+                  <Mic className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                </button>
               </div>
             </div>
 
@@ -874,6 +886,12 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      
+      {/* Voice Chat Modal */}
+      <VoiceChat 
+        isOpen={isVoiceChatOpen} 
+        onClose={() => setIsVoiceChatOpen(false)} 
+      />
     </div>
   )
 }
