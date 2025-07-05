@@ -23,6 +23,7 @@ import {
   Mic
 } from 'lucide-react'
 import VoiceChat from '../VoiceChat'
+import DatabaseDebug from '../debug/DatabaseDebug'
 
 export default function Dashboard() {
   const { user, profile, signOut } = useAuth()
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [conversationLoading, setConversationLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [isVoiceChatOpen, setIsVoiceChatOpen] = useState(false)
+  const [isDebugOpen, setIsDebugOpen] = useState(false)
 
   // Check if Supabase is properly configured
   const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && 
@@ -53,8 +55,11 @@ export default function Dashboard() {
     }
 
     if (user) {
+      console.log('User found in dashboard, fetching conversations for:', user.id)
+      console.log('User email:', user.email)
       fetchConversations()
     } else {
+      console.log('No user found in dashboard')
       setInitialLoading(false)
     }
   }, [user, isSupabaseConfigured])
@@ -595,6 +600,13 @@ export default function Dashboard() {
                 <RefreshCw className="h-5 w-5" />
               </button>
               <button
+                onClick={() => setIsDebugOpen(true)}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Debug database"
+              >
+                🔍
+              </button>
+              <button
                 onClick={signOut}
                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Sign out"
@@ -891,6 +903,12 @@ export default function Dashboard() {
       <VoiceChat 
         isOpen={isVoiceChatOpen} 
         onClose={() => setIsVoiceChatOpen(false)} 
+      />
+      
+      {/* Database Debug Modal */}
+      <DatabaseDebug 
+        isOpen={isDebugOpen} 
+        onClose={() => setIsDebugOpen(false)} 
       />
     </div>
   )

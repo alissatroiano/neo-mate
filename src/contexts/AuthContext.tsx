@@ -162,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
       console.log('Attempting to sign up user:', email)
+      console.log('Full name provided:', fullName)
       
       // Sign up with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
@@ -181,6 +182,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log('Sign up response:', data)
+      
+      // Additional logging for debugging
+      if (data.user) {
+        console.log('User created with ID:', data.user.id)
+        console.log('User email:', data.user.email)
+        console.log('User metadata:', data.user.user_metadata)
+        
+        // Wait a moment and then check if profile was created
+        setTimeout(async () => {
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single()
+            
+            if (profileError) {
+              console.error('Profile not found after signup:', profileError)
+              // Try to create profile manually
+              console.log('Attempting to create profile manually...')
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: data.user.id,
+                  email: data.user.email || email,
+                  full_name: fullName
+                })
+              
+              if (insertError) {
+                console.error('Manual profile creation failed:', insertError)
+              } else {
+                console.log('Profile created manually')
+              }
+            } else {
+              console.log('Profile found:', profileData)
+            }
+          } catch (checkError) {
+            console.error('Error checking profile:', checkError)
+          }
+        }, 2000)
+      }
       
       // With email confirmation disabled, user should be immediately available
       if (data.user) {
