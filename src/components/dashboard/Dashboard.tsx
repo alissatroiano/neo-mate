@@ -781,7 +781,7 @@ export default function Dashboard() {
                 {/* Voice Chat Button */}
                 <button
                   onClick={() => setIsVoiceChatOpen(true)}
-                  className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white p-3 rounded-full hover:from-teal-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl group"
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-3 rounded-full hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl group"
                   title="Start voice chat"
                 >
                   <Mic className="h-5 w-5 group-hover:scale-110 transition-transform" />
