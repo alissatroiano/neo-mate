@@ -87,24 +87,60 @@ export default function DatabaseDebug({ isOpen, onClose }: DatabaseDebugProps) {
       // Try to create profile if it doesn't exist
       if (!info.profile && user) {
         try {
-          console.log('Attempting to create missing profile...')
+          console.log('Attempting to create missing profile for user:', user.id)
+          console.log('User email:', user.email)
+          console.log('User metadata:', user.user_metadata)
+          
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
             .insert({
               id: user.id,
               email: user.email || '',
-              full_name: user.user_metadata?.full_name || ''
+              full_name: user.user_metadata?.full_name || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             })
             .select()
             .single()
 
           if (createError) {
+            console.error('Profile creation failed:', createError)
             info.errors.push(`Profile creation error: ${createError.message}`)
+            
+            // Try alternative approach - call the Supabase function
+            try {
+              console.log('Trying to call create_missing_profiles function...')
+              const { data: functionResult, error: functionError } = await supabase
+                .rpc('create_missing_profiles')
+              
+              if (functionError) {
+                info.errors.push(`Function call error: ${functionError.message}`)
+              } else {
+                console.log('Function result:', functionResult)
+                info.functionResult = functionResult
+                
+                // Try to fetch profile again
+                const { data: retryProfile } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', user.id)
+                  .single()
+                
+                if (retryProfile) {
+                  info.profile = retryProfile
+                  info.profileCreated = true
+                }
+              }
+            } catch (funcError) {
+              info.errors.push(`Function exception: ${funcError}`)
+            }
           } else {
+            console.log('Profile created successfully:', newProfile)
             info.profile = newProfile
             info.profileCreated = true
           }
         } catch (error) {
+          console.error('Profile creation exception:', error)
           info.errors.push(`Profile creation exception: ${error}`)
         }
       }

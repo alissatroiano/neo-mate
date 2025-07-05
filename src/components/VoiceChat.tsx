@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, Volume2, VolumeX, Loader } from 'lucide-react'
+import { Mic, MicOff, Volume2, VolumeX, Loader, AlertCircle } from 'lucide-react'
 
 interface VoiceChatProps {
   isOpen: boolean
@@ -21,17 +21,52 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
   const widgetRef = useRef<HTMLDivElement>(null)
   const [isWidgetLoaded, setIsWidgetLoaded] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID || 'agent_01jz6bx45qfxvsxyrakxgvkqft'
 
   useEffect(() => {
     if (isOpen) {
-      loadElevenLabsWidget()
+      getSignedUrl()
     }
   }, [isOpen])
 
-  const loadElevenLabsWidget = async () => {
+  const getSignedUrl = async () => {
     setIsLoading(true)
+    setError(null)
     
+    try {
+      console.log('Getting signed URL for ElevenLabs agent:', agentId)
+      
+      // Get signed URL from our edge function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-auth?agent_id=${agentId}`, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('Signed URL obtained successfully')
+      setSignedUrl(data.signed_url)
+      
+      // Now load the widget
+      await loadElevenLabsWidget()
+      
+    } catch (error) {
+      console.error('Error getting signed URL:', error)
+      setError(error instanceof Error ? error.message : 'Failed to authorize voice chat')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loadElevenLabsWidget = async () => {
     try {
       // Check if the script is already loaded
       if (!document.querySelector('script[src*="convai-widget-embed"]')) {
@@ -72,8 +107,7 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
       }
     } catch (error) {
       console.error('Error loading ElevenLabs widget:', error)
-    } finally {
-      setIsLoading(false)
+      setError('Failed to load voice chat widget')
     }
   }
 
@@ -107,10 +141,32 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
 
         {/* Widget Container */}
         <div className="p-6" ref={widgetRef}>
-          {isLoading ? (
+          {error ? (
+            <div className="text-center py-8">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-center space-x-2 text-red-700">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">Voice Chat Error</span>
+                </div>
+                <p className="text-xs text-red-600 mt-1">{error}</p>
+                {error.includes('API key') && (
+                  <p className="text-xs text-red-600 mt-2">
+                    The ElevenLabs API key needs to be configured in Supabase environment variables.
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={getSignedUrl}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : isLoading ? (
             <div className="text-center py-8">
               <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading voice chat...</p>
+              <p className="text-gray-600">Authorizing voice chat...</p>
+              <p className="text-xs text-gray-500 mt-1">Getting secure connection to ElevenLabs</p>
             </div>
           ) : !isWidgetLoaded ? (
             <div className="text-center py-8">
@@ -124,7 +180,7 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
                 </p>
               </div>
               <button
-                onClick={loadElevenLabsWidget}
+                onClick={getSignedUrl}
                 className="bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors"
               >
                 Retry Loading
@@ -146,7 +202,13 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
 
               {/* ElevenLabs Widget */}
               <div className="flex justify-center">
-                <elevenlabs-convai agent-id={agentId} />
+                {signedUrl ? (
+                  <elevenlabs-convai agent-id={agentId} />
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-600">Preparing voice chat...</p>
+                  </div>
+                )}
               </div>
 
               {/* Instructions */}
