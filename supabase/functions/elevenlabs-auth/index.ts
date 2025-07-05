@@ -26,7 +26,7 @@ console.log('ElevenLabs API Key configured:', !!ELEVENLABS_API_KEY);
 
 serve(async (req: Request) => {
   const timestamp = new Date().toISOString()
-  console.log(`[${timestamp}] ${req.method} ${req.url}`)
+  console.log(`[${timestamp}] ElevenLabs Auth - ${req.method} ${req.url}`)
   
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -38,28 +38,16 @@ serve(async (req: Request) => {
   }
 
   try {
+    console.log('ElevenLabs API Key configured:', !!ELEVENLABS_API_KEY)
+    console.log('ElevenLabs API Key length:', ELEVENLABS_API_KEY ? ELEVENLABS_API_KEY.length : 0)
+    
     if (!ELEVENLABS_API_KEY) {
       console.error('ElevenLabs API key not configured')
       return new Response(
-        JSON.stringify({ error: 'ElevenLabs API key not configured' }),
-        {
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      )
-    }
-
-    // Get the agent ID from query parameters
-    const url = new URL(req.url)
-    const agentId = url.searchParams.get('agent_id')
-
-    if (!agentId) {
-      console.error('Agent ID is required')
-      return new Response(
-        JSON.stringify({ error: 'Agent ID is required' }),
+        JSON.stringify({ 
+          error: 'ElevenLabs API key not configured in Supabase environment variables',
+          details: 'Please add ELEVENLABS_API_KEY to your Supabase project settings'
+        }),
         {
           status: 400,
           headers: {
@@ -70,7 +58,39 @@ serve(async (req: Request) => {
       )
     }
 
-    console.log(`Getting signed URL for agent: ${agentId}`)
+    // Get the agent ID from query parameters or request body
+    const url = new URL(req.url)
+    let agentId = url.searchParams.get('agent_id')
+    
+    // If not in query params, try request body
+    if (!agentId && req.method === 'POST') {
+      try {
+        const body = await req.json()
+        agentId = body.agent_id
+        console.log('Agent ID from request body:', agentId)
+      } catch (e) {
+        console.log('Could not parse request body for agent_id')
+      }
+    }
+
+    if (!agentId) {
+      console.error('Agent ID is required but not provided')
+      return new Response(
+        JSON.stringify({ 
+          error: 'Agent ID is required',
+          details: 'Please provide agent_id in query parameters or request body'
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      )
+    }
+
+    console.log(`Getting signed URL for agent: ${agentId} using API key: ${ELEVENLABS_API_KEY.substring(0, 8)}...`)
 
     // Set up request headers with ElevenLabs API key
     const requestHeaders: HeadersInit = new Headers()
@@ -89,14 +109,21 @@ serve(async (req: Request) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('ElevenLabs API error:', response.status, response.statusText, errorText)
+      console.error('ElevenLabs API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+        agentId: agentId
+      })
+      
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to get signed URL from ElevenLabs',
-          details: errorText
+          error: `ElevenLabs API error: ${response.status} ${response.statusText}`,
+          details: errorText,
+          agentId: agentId
         }),
         {
-          status: response.status,
+          status: 400,
           headers: {
             'Content-Type': 'application/json',
             ...corsHeaders,
@@ -106,10 +133,14 @@ serve(async (req: Request) => {
     }
 
     const body = await response.json()
-    console.log('Successfully obtained signed URL from ElevenLabs')
+    console.log('Successfully obtained signed URL from ElevenLabs:', !!body.signed_url)
     
     return new Response(
-      JSON.stringify({ signed_url: body.signed_url }),
+      JSON.stringify({ 
+        signed_url: body.signed_url,
+        agent_id: agentId,
+        success: true
+      }),
       {
         headers: {
           'Content-Type': 'application/json',
@@ -118,11 +149,16 @@ serve(async (req: Request) => {
       }
     )
   } catch (error) {
-    console.error('Error in elevenlabs-auth function:', error)
+    console.error('Error in elevenlabs-auth function:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name
+    })
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message
+        details: error.message,
+        type: error.name
       }),
       {
         status: 500,

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, Volume2, VolumeX, Loader, AlertCircle } from 'lucide-react'
+import { Mic, MicOff, Volume2, VolumeX, Loader, AlertCircle, Settings } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 interface VoiceChatProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
   const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID || 'agent_01jz6bx45qfxvsxyrakxgvkqft'
 
   useEffect(() => {
@@ -38,21 +40,24 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
     try {
       console.log('Getting signed URL for ElevenLabs agent:', agentId)
       
-      // Get signed URL from our edge function
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-auth?agent_id=${agentId}`, {
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
+      // Use Supabase client to call the edge function
+      const { data, error: functionError } = await supabase.functions.invoke('elevenlabs-auth', {
+        body: { agent_id: agentId }
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `HTTP ${response.status}`)
+      console.log('Edge function response:', { data, error: functionError })
+      setDebugInfo({ data, error: functionError, agentId })
+
+      if (functionError) {
+        console.error('Edge function error:', functionError)
+        throw new Error(functionError.message || 'Failed to get authorization')
       }
 
-      const data = await response.json()
-      console.log('Signed URL obtained successfully')
+      if (!data?.signed_url) {
+        throw new Error('No signed URL received from authorization service')
+      }
+
+      console.log('Signed URL obtained successfully:', data.signed_url.substring(0, 50) + '...')
       setSignedUrl(data.signed_url)
       
       // Now load the widget
@@ -60,7 +65,9 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
       
     } catch (error) {
       console.error('Error getting signed URL:', error)
-      setError(error instanceof Error ? error.message : 'Failed to authorize voice chat')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to authorize voice chat'
+      setError(errorMessage)
+      setDebugInfo(prev => ({ ...prev, clientError: errorMessage }))
     } finally {
       setIsLoading(false)
     }
@@ -141,6 +148,18 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
 
         {/* Widget Container */}
         <div className="p-6" ref={widgetRef}>
+          {/* Debug Info (only show in development) */}
+          {import.meta.env.DEV && debugInfo && (
+            <details className="mb-4 text-xs">
+              <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                Debug Info (Dev Only)
+              </summary>
+              <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </details>
+          )}
+
           {error ? (
             <div className="text-center py-8">
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -149,9 +168,21 @@ export default function VoiceChat({ isOpen, onClose }: VoiceChatProps) {
                   <span className="text-sm font-medium">Voice Chat Error</span>
                 </div>
                 <p className="text-xs text-red-600 mt-1">{error}</p>
-                {error.includes('API key') && (
+                {(error.includes('API key') || error.includes('not configured')) && (
+                  <div className="mt-3 p-3 bg-red-100 rounded text-xs text-red-700">
+                    <p className="font-medium mb-1">Configuration Required:</p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Get your ElevenLabs API key from <a href="https://elevenlabs.io" target="_blank" className="underline">elevenlabs.io</a></li>
+                      <li>Go to your <a href="https://supabase.com/dashboard/project/omkhwrtmdpfwsgktycli/settings/functions" target="_blank" className="underline">Supabase Dashboard</a></li>
+                      <li>Navigate to Settings → Edge Functions</li>
+                      <li>Add environment variable: <code className="bg-red-200 px-1 rounded">ELEVENLABS_API_KEY</code></li>
+                      <li>Set the value to your ElevenLabs API key</li>
+                    </ol>
+                  </div>
+                )}
+                {error.includes('agent') && (
                   <p className="text-xs text-red-600 mt-2">
-                    The ElevenLabs API key needs to be configured in Supabase environment variables.
+                    Agent ID: {agentId}. Make sure this agent exists in your ElevenLabs account.
                   </p>
                 )}
               </div>
