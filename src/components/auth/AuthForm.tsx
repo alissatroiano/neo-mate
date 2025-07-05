@@ -20,7 +20,6 @@ export default function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProp
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showEmailVerification, setShowEmailVerification] = useState(false)
   const [signUpSuccess, setSignUpSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +32,7 @@ export default function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProp
       if (mode === 'signup') {
         result = await signUp(formData.email, formData.password, formData.fullName)
         if (!result.error) {
-          // For now, show success message instead of email verification
+          // Show success message and allow immediate sign in
           setSignUpSuccess(true)
           return
         }
@@ -42,9 +41,7 @@ export default function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProp
       }
 
       if (result.error) {
-        if (result.error.message.includes('Email not confirmed')) {
-          setError('Please check your email and click the confirmation link before signing in.')
-        } else if (result.error.message.includes('Invalid login credentials')) {
+        if (result.error.message.includes('Invalid login credentials')) {
           setError('Invalid email or password. Please check your credentials and try again.')
         } else if (result.error.message.includes('User already registered')) {
           setError('An account with this email already exists. Please sign in instead.')
@@ -73,7 +70,6 @@ export default function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProp
   }
 
   const handleBackToSignIn = () => {
-    setShowEmailVerification(false)
     setSignUpSuccess(false)
     setFormData({ email: '', password: '', fullName: '' })
     setError(null)
@@ -144,8 +140,8 @@ export default function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProp
               <div className="bg-teal-50 border border-teal-200 rounded-lg p-6 mb-6">
                 <CheckCircle className="h-12 w-12 text-teal-600 mx-auto mb-4" />
                 <p className="text-gray-700 leading-relaxed">
-                  Welcome to Neomate! Your account has been created successfully. 
-                  You can now sign in and start your journey with our compassionate AI assistant.
+                  Welcome to Neomate! Your account has been created and you're ready to start. 
+                  You can now sign in immediately and begin your journey with our compassionate AI assistant.
                 </p>
               </div>
               
@@ -163,108 +159,6 @@ export default function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProp
                 >
                   Back to Home
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 py-4">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center text-sm text-gray-500">
-              <p>© 2024 Neomate. All rights reserved. HIPAA compliant and secure.</p>
-            </div>
-          </div>
-        </footer>
-      </div>
-    )
-  }
-
-  if (showEmailVerification) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 flex flex-col">
-        {/* Header */}
-        <header className="bg-white/95 backdrop-blur-sm shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <button 
-                onClick={handleBackToLanding}
-                className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-              >
-                <img 
-                  src="/favicon.png" 
-                  alt="Neomate" 
-                  className="h-10 w-10"
-                />
-                <div className="flex flex-col">
-                  <span className="text-2xl font-script text-teal-600">Neomate</span>
-                  <span className="text-xs text-teal-500 uppercase tracking-wider font-light -mt-1">
-                    Neonatal AI Assistant
-                  </span>
-                </div>
-              </button>
-              
-              <button
-                onClick={handleBackToLanding}
-                className="flex items-center space-x-2 text-gray-600 hover:text-teal-600 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to Home</span>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="max-w-md w-full space-y-8">
-            <div className="text-center">
-              <div className="bg-gradient-to-r from-green-500 to-green-600 p-3 rounded-xl w-16 h-16 mx-auto mb-6 flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Check Your Email
-              </h2>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-6 mb-6">
-                <Mail className="h-12 w-12 text-teal-600 mx-auto mb-4" />
-                <p className="text-gray-700 leading-relaxed">
-                  We've sent a confirmation email to <strong>{formData.email}</strong>. 
-                  Please click the link in the email to verify your account and complete your registration.
-                </p>
-              </div>
-              
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-left">
-                    <p className="text-sm text-amber-800 font-medium mb-1">Important:</p>
-                    <p className="text-sm text-amber-700">
-                      After clicking the confirmation link, you'll be redirected back to Neomate where you can sign in with your new account.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <button
-                  onClick={handleBackToSignIn}
-                  className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white py-3 px-4 rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-all duration-300 font-semibold"
-                >
-                  Back to Sign In
-                </button>
-                
-                <p className="text-sm text-gray-500">
-                  Didn't receive the email? Check your spam folder or{' '}
-                  <button 
-                    onClick={() => {
-                      setShowEmailVerification(false)
-                      setFormData(prev => ({ ...prev, password: '' }))
-                    }}
-                    className="text-teal-600 hover:text-teal-700 font-medium"
-                  >
-                    try signing up again
-                  </button>
-                </p>
               </div>
             </div>
           </div>
@@ -422,8 +316,8 @@ export default function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProp
                 <div className="flex items-start space-x-3">
                   <Info className="h-5 w-5 text-teal-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-teal-800">
-                    <p className="font-medium mb-1">Quick Setup</p>
-                    <p>Your account will be created instantly so you can start chatting with Neomate right away.</p>
+                    <p className="font-medium mb-1">Instant Access</p>
+                    <p>Your account will be created immediately and you can start chatting with Neomate right away - no email verification required.</p>
                   </div>
                 </div>
               </div>

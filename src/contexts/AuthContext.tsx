@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Attempting to sign up user:', email)
       
-      // Sign up with email confirmation disabled for now
+      // Sign up with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             full_name: fullName,
           },
-          // Remove email redirect for now to test without email confirmation
+          emailRedirectTo: undefined, // Disable email confirmation
         },
       })
       
@@ -182,15 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Sign up response:', data)
       
-      // Check if user needs email confirmation
-      if (data.user && !data.session) {
-        console.log('User created but needs email confirmation')
-        return { error: null }
-      }
-      
-      // If we get a session immediately, the user is confirmed
-      if (data.session) {
-        console.log('User signed up and confirmed immediately')
+      // With email confirmation disabled, user should be immediately available
+      if (data.user) {
+        console.log('User signed up successfully without email confirmation')
         return { error: null }
       }
       
